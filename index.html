@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#020817"><title>J.A.R.V.I.S.</title>
+<style>
+:root{--cyan:#00cfff;--blue:#087bff;--bg:#020817;--panel:rgba(3,20,43,.88);--line:#087dff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#082b55 0,#020817 48%,#000 100%);color:#d9f7ff;font-family:system-ui,Arial;min-height:100vh}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(transparent 96%,rgba(0,180,255,.08) 97%),linear-gradient(90deg,transparent 96%,rgba(0,180,255,.05) 97%);background-size:24px 24px}
+header{text-align:center;padding:18px 12px 10px;border-bottom:1px solid #075b9c;letter-spacing:3px}
+.brand{font-size:clamp(25px,7vw,42px);font-weight:800;color:#9beeff;text-shadow:0 0 16px #00aaff}
+.sub{font-size:12px;color:#50bfff;letter-spacing:4px}.status{color:#39ff9b;font-size:12px;margin-top:8px}
+.wrap{max-width:850px;margin:auto;padding:14px}
+.panel{border:1px solid #087dff;background:var(--panel);box-shadow:0 0 18px #003c80,inset 0 0 18px #001a3d;border-radius:16px;padding:14px;margin-bottom:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.reactor{width:74px;height:74px;border-radius:50%;border:3px solid #18cfff;display:grid;place-items:center;box-shadow:0 0 20px #008cff,inset 0 0 18px #008cff;animation:pulse 3s infinite}
+.reactor span{font-size:34px;color:#9ff7ff;text-shadow:0 0 15px #00bfff}
+@keyframes pulse{50%{box-shadow:0 0 32px #00aaff,inset 0 0 25px #00aaff}}
+.meta{font-size:12px;color:#74dfff;text-align:right;line-height:1.8}
+#chat{height:min(52vh,500px);overflow:auto;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:90%;padding:12px 14px;border:1px solid #087dff;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
+.bot{align-self:flex-start;background:#03152b}.you{align-self:flex-end;background:#06254b;border-color:#00cfff}
+.tag{font-size:10px;color:#54dfff;letter-spacing:2px;margin-bottom:5px}
+.controls{display:flex;gap:8px;margin-top:12px}
+input{flex:1;min-width:0;background:#010b1b;border:1px solid #087dff;border-radius:10px;padding:13px;color:white;font-size:16px;outline:none}
+button{background:#062b52;border:1px solid #00bfff;color:#a7f4ff;border-radius:10px;padding:12px 15px;font-weight:700;cursor:pointer}
+button:disabled{opacity:.45}.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+small{color:#64bce5}.footer{text-align:center;color:#4e9dbd;font-size:11px;padding:12px}
+@media(max-width:480px){.wrap{padding:10px}.panel{padding:11px}.controls button{padding:10px}.reactor{width:58px;height:58px}}
+</style></head>
+<body>
+<header><div class="brand">J.A.R.V.I.S.</div><div class="sub">PERSONAL AI ASSISTANT</div><div class="status">● ONLINE <span id="clock"></span></div></header>
+<main class="wrap">
+<section class="panel top"><div><div class="tag">NEURAL INTERFACE</div><b>Hey Jay. Systems ready.</b><br><small>Powered by Gemini • memory enabled</small></div><div class="reactor"><span>✦</span></div><div class="meta">MIND: GEMINI<br>MODE: PERSONAL<br>LINK: SECURE*</div></section>
+<section class="panel"><div id="chat" aria-live="polite"><div class="msg bot"><div class="tag">JARVIS</div>Hey Jay! I'm here. What's on your mind?</div></div>
+<div class="controls"><input id="input" placeholder="Message JARVIS..." maxlength="8000" autocomplete="off"><button id="send">SEND</button></div>
+<div class="tools"><button id="mic">🎙 VOICE</button><button id="speak">🔊 SPEAK</button><button id="clear">⌫ CLEAR MEMORY</button></div>
+</section><section class="panel"><div class="tag">SYSTEM STATUS</div><small>AI connection: host-configured<br>Conversation memory: local database (host storage)<br>Voice: browser support required</small></section>
+<div class="footer">*Secure connection depends on your hosting provider. Keep your API key in server Secrets, never in this page.</div>
+</main>
+<script>
+const chat=document.querySelector('#chat'),input=document.querySelector('#input'),send=document.querySelector('#send');
+function add(text,who){const box=document.createElement('div');box.className='msg '+(who==='user'?'you':'bot');const tag=document.createElement('div');tag.className='tag';tag.textContent=who==='user'?'YOU':'JARVIS';const body=document.createElement('div');body.textContent=text;box.append(tag,body);chat.append(box);chat.scrollTop=chat.scrollHeight;return body}
+async function loadHistory(){try{const r=await fetch('/api/history');if(r.ok){const d=await r.json();if(d.messages.length){chat.innerHTML='';d.messages.forEach(m=>add(m.content,m.role))}}}catch{}}
+async function ask(){const text=input.value.trim();if(!text)return;add(text,'user');input.value='';send.disabled=true;send.textContent='...';const out=add('Connecting to Gemini…','assistant');try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});const d=await r.json();if(!r.ok)throw Error(d.detail||'Connection failed');out.textContent=d.reply}catch(e){out.textContent='⚠ '+e.message}finally{send.disabled=false;send.textContent='SEND';input.focus()}}
+send.onclick=ask;input.addEventListener('keydown',e=>{if(e.key==='Enter')ask()});
+document.querySelector('#speak').onclick=()=>{const last=[...chat.querySelectorAll('.bot div:last-child')].pop();if(last&&'speechSynthesis'in window){speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(last.textContent))}};
+document.querySelector('#clear').onclick=async()=>{if(confirm('Clear saved conversation memory?')){await fetch('/api/clear',{method:'POST'});chat.innerHTML='';add('Memory cleared. Fresh start, Jay.','assistant')}};
+document.querySelector('#mic').onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Voice input is not supported in this browser. Try Chrome.');return}const rec=new SR();rec.lang='en-IN';rec.onresult=e=>{input.value=e.results[0][0].transcript;ask()};rec.onerror=()=>alert('Mic unavailable. Check browser microphone permission.');rec.start()};
+function tick(){document.querySelector('#clock').textContent=new Date().toLocaleTimeString()}tick();setInterval(tick,1000);loadHistory();
+</script></body></html>
